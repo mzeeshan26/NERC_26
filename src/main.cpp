@@ -58,7 +58,7 @@ int threshold = 750;
 // =====================================
 // SPEEDS
 // =====================================
-int baseSpeed =80 ;
+int baseSpeed =70 ;
 int turnSpeed = 20;
 int encoderTurnSpeed=135;
 
@@ -373,7 +373,7 @@ void stepperLeft(){
   digitalWrite(YDIR_PIN, LOW);
    
   //x motor 
-    for(int i = 0; i < 200; i++) {
+    for(int i = 0; i < 185; i++) {
 
     digitalWrite(XSTEP_PIN, HIGH);
     delayMicroseconds(800);
@@ -384,12 +384,27 @@ void stepperLeft(){
 }
 }
 
-void stepperCenter(){
+void stepperR2C(){
   //x motor anitclockwise
     digitalWrite(XDIR_PIN, LOW);
    
   //x motor 
-    for(int i = 0; i < 225; i++) {
+    for(int i = 0; i < 220; i++) {
+
+    digitalWrite(XSTEP_PIN, HIGH);
+    delayMicroseconds(800);
+
+    digitalWrite(XSTEP_PIN, LOW);
+    delayMicroseconds(800);
+
+}
+}
+void stepperL2C(){
+  //x motor anitclockwise
+    digitalWrite(XDIR_PIN, HIGH);
+   
+  //x motor 
+    for(int i = 0; i < 290; i++) {
 
     digitalWrite(XSTEP_PIN, HIGH);
     delayMicroseconds(800);
@@ -614,37 +629,43 @@ void servoShoot(){
 }
 
 void checkColorSensor1Red() {
+  ColorData sensor1 = readAveragedColor(0);
+  String color1 = detectColor(sensor1);
+  ColorData sensor2 = readAveragedColor(1);
+  String color2 = detectColor(sensor2);
 
+  Serial.print("Sensor 1 Color: ");
+  Serial.println(color1);
+  Serial.print("Sensor 2 Color: ");
+  Serial.println(color2);
 
-  uint16_t r, g, b, c;
+  stepperL2C();
+  delay(1000);
 
-  // Check Sensor 1
-  setMuxChannel(0);
-  tcs.getRawData(&r, &g, &b, &c);
-
-  Serial.print("Sensor 1 Red Value: ");
-  Serial.println(r);
-
-  if (r > colorThreshold) {
-    Serial.println("Sensor 1 red detected");
-    stepperRight();
-    servoShoot();
+  int redSensor = 0;
+  if (color1 == "RED") {
+    redSensor = 1;
+  } else if (color2 == "RED") {
+    redSensor = 2;
   }
 
-  delay(100);
+  switch (redSensor) {
+    case 2:
+      Serial.println("Sensor 2 red detected");
+      stepperLeft();
+      // servoShoot();
+      // stepperL2C();
+      break;
 
-  // Check Sensor 2
-  setMuxChannel(1);
-  tcs.getRawData(&r, &g, &b, &c);
+    case 1:
+      Serial.println("Sensor 1 red detected");
+      stepperRight();
+      // servoShoot();
+      // stepperR2C();
+      break;
 
-  Serial.print("Sensor 2 Red Value: ");
-  Serial.println(r);
-
-  if (r > colorThreshold) {
-    Serial.println("Sensor 2 red detected");
-    stepperLeft();
-    servoShoot();
-    
+    default:
+      break;
   }
 }
 
@@ -773,13 +794,22 @@ void setup() {
 
 //    lineFollowUntil(3);
 //  delay(1000);
+// stepperL2C();
+// stepperR2C();
+// stepperRight();
+// stepperL2C();
+// delay(1000);
+// stepperLeft();
+// checkColorSensor1Red();
+
+
+
 
 // stepperLeft();
-// stepperRight();
 // stepperUp();
 // stepperDown();
 
-stepperCenter();
+// stepperCenter();
   
 //     digitalWrite(XDIR_PIN, HIGH);
 //   digitalWrite(YDIR_PIN, HIGH);
@@ -841,15 +871,23 @@ stepperCenter();
 
 //   servo2To0();
 //   delay(2000);
-
-//   lineFollowUntil(3);
-//  delay(1000);
 //  B_lineFollowUntil(2);
 //  delay(1000);
 //  encoderLeft(200);
+
+  lineFollowUntil(1);
+ delay(1000);
+ checkColorSensor1Red();
+delay(1000);
+//  encoderForward(50);
+//  delay(1000);
 // encoderRight(200);
 //  delay(1000);
-//    lineFollowUntil(3);
+//    lineFollowUntil(4);
+//  delay(1000);
+//  encoderRight(200);
+//  delay(1000);
+//    lineFollowUntil(2);
 //  delay(1000);
 //   lineFollowUntil(1);
 //  delay(1000);
@@ -857,6 +895,7 @@ stepperCenter();
 //  delay(1000);
 //  encoderForward(1000);
 //  delay(1000);
+// checkColorSensor1Red();
 
 // encoderTicks(500);
 // encoderTickCount(100);
@@ -874,7 +913,9 @@ stepperCenter();
 // =====================================
 void loop() {
 
-senseColor();
+// senseColor();
+// checkColorSensor1Red();
+  // servoShoot();
   //  printForwardSensors();
   //   Serial.println("");
    
