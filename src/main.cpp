@@ -58,7 +58,7 @@ int threshold = 750;
 // =====================================
 // SPEEDS
 // =====================================
-int baseSpeed =70 ;
+int baseSpeed =60 ;
 int turnSpeed = 20;
 int encoderTurnSpeed=135;
 
@@ -86,6 +86,8 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS347
 #define BRS  A14
 #define BRMS A15
 
+
+
 // =====================================
 // ENCODER ISR
 // =====================================
@@ -108,11 +110,11 @@ void setMotor(int leftSpeed, int rightSpeed) {
 
   // Right Motor
   if (rightSpeed >= 0) {
-    analogWrite(M2_RPWM, rightSpeed);
+    analogWrite(M2_RPWM, rightSpeed-10);
     analogWrite(M2_LPWM, 0);
   } else {
     analogWrite(M2_RPWM, 0);
-    analogWrite(M2_LPWM, -rightSpeed);
+    analogWrite(M2_LPWM, -rightSpeed+10);
   }
 }
 
@@ -169,7 +171,7 @@ void lineFollowForward() {
   bool fR1 = (R1 < threshold);
   bool fR2 = (R2 < threshold);
 
-  if (fC) setMotor(baseSpeed-5, baseSpeed);
+  if (fC) setMotor(baseSpeed, baseSpeed);
   else if (fR1) setMotor(turnSpeed, baseSpeed);
   else if (fR2) setMotor(0, baseSpeed);
   else if (fL1) setMotor(baseSpeed, turnSpeed);
@@ -196,7 +198,7 @@ void lineFollowBackward() {
 
   
 
-  if (bC) setMotor(-baseSpeed+5, -baseSpeed);
+  if (bC) setMotor(-baseSpeed, -baseSpeed);
   else if (bL1) setMotor(-turnSpeed, -baseSpeed);
   else if (bL2) setMotor(0, -baseSpeed);
   else if (bR1) setMotor(-baseSpeed, -turnSpeed);
@@ -234,7 +236,7 @@ void encoderRight(long ticks) {
   rightEncoderTick = 0;
 
   while (leftEncoderTick < ticks && rightEncoderTick < ticks) {
-    setMotor(-encoderTurnSpeed, encoderTurnSpeed);
+    setMotor(-encoderTurnSpeed, encoderTurnSpeed-10);
   }
 
   stopMotors();
@@ -245,7 +247,7 @@ void encoderLeft(long ticks) {
   rightEncoderTick = 0;
 
   while (leftEncoderTick < ticks && rightEncoderTick < ticks) {
-    setMotor(encoderTurnSpeed, -encoderTurnSpeed);
+    setMotor(encoderTurnSpeed, -encoderTurnSpeed-10);
   }
 
   stopMotors();
@@ -348,7 +350,7 @@ void B_lineFollowUntil(int targetCount) {
 }
 
 void forward(){
-   setMotor(baseSpeed-5, baseSpeed);
+   setMotor(baseSpeed, baseSpeed);
 }
 
 void stepperRight(){
@@ -389,7 +391,7 @@ void stepperR2C(){
     digitalWrite(XDIR_PIN, LOW);
    
   //x motor 
-    for(int i = 0; i < 220; i++) {
+    for(int i = 0; i < 205; i++) {
 
     digitalWrite(XSTEP_PIN, HIGH);
     delayMicroseconds(800);
@@ -404,7 +406,7 @@ void stepperL2C(){
     digitalWrite(XDIR_PIN, HIGH);
    
   //x motor 
-    for(int i = 0; i < 290; i++) {
+    for(int i = 0; i < 280; i++) {
 
     digitalWrite(XSTEP_PIN, HIGH);
     delayMicroseconds(800);
@@ -421,13 +423,13 @@ void stepperUp(){
   digitalWrite(YDIR_PIN, HIGH);
    
   //x motor 
-    for(int i = 0; i < 550; i++) {
+    for(int i = 0; i < 575; i++) {
 
     digitalWrite(YSTEP_PIN, HIGH);
-    delayMicroseconds(800);
+    delayMicroseconds(1000);
 
     digitalWrite(YSTEP_PIN, LOW);
-    delayMicroseconds(800);
+    delayMicroseconds(1000);
 
 }
 }
@@ -616,19 +618,19 @@ void servo2To30() {
 void servoShoot(){
 
   servo1To90();
-  delay(2000);
+  delay(200);
 
   servo2To30();
-  delay(2000);
+  delay(500);
 
   servo1To0();
-  delay(2000);
+  delay(500);
 
   servo2To0();
-  delay(2000);
+  delay(300);
 }
 
-void checkColorSensor1Red() {
+void ReadDown() {
   ColorData sensor1 = readAveragedColor(0);
   String color1 = detectColor(sensor1);
   ColorData sensor2 = readAveragedColor(1);
@@ -642,10 +644,80 @@ void checkColorSensor1Red() {
   stepperL2C();
   delay(1000);
 
+  bool sensor1Red = (color1 == "RED");
+  bool sensor2Red = (color2 == "RED");
+
   int redSensor = 0;
-  if (color1 == "RED") {
+  if (sensor1Red && sensor2Red) {
+    redSensor = 3;
+  } else if (!sensor1Red && !sensor2Red) {
+    redSensor = 4;
+  } else if (sensor1Red) {
     redSensor = 1;
-  } else if (color2 == "RED") {
+  } else {
+    redSensor = 2;
+  }
+
+
+  switch (redSensor) {
+    case 2:
+      Serial.println("Sensor 2 red detected");
+      stepperLeft();
+      servoShoot();
+      stepperL2C();
+      break;
+
+    case 1:
+      Serial.println("Sensor 1 red detected");
+      stepperRight();
+      servoShoot();
+      stepperR2C();
+      break;
+
+    case 3:
+      Serial.println("Both sensors red detected. No shooting.");
+      break;
+
+    case 4:
+      Serial.println("No red detected on both sensors");
+      stepperLeft();
+      servoShoot();
+      stepperL2C();
+      stepperRight();
+      servoShoot();
+      stepperR2C();
+      break;
+
+    default:
+      break;
+  }
+}
+
+void ReadUp() {
+  ColorData sensor1 = readAveragedColor(0);
+  String color1 = detectColor(sensor1);
+  ColorData sensor2 = readAveragedColor(1);
+  String color2 = detectColor(sensor2);
+
+  Serial.print("Sensor 1 Color: ");
+  Serial.println(color1);
+  Serial.print("Sensor 2 Color: ");
+  Serial.println(color2);
+
+   stepperUp();
+  delay(500);
+
+  bool sensor1Red = (color1 == "RED");
+  bool sensor2Red = (color2 == "RED");
+
+  int redSensor = 0;
+  if (sensor1Red && sensor2Red) {
+    redSensor = 4;
+  } else if (!sensor1Red && !sensor2Red) {
+    redSensor = 3;
+  } else if (sensor1Red) {
+    redSensor = 1;
+  } else {
     redSensor = 2;
   }
 
@@ -653,15 +725,29 @@ void checkColorSensor1Red() {
     case 2:
       Serial.println("Sensor 2 red detected");
       stepperLeft();
-      // servoShoot();
-      // stepperL2C();
+      servoShoot();
+      stepperL2C();
       break;
 
     case 1:
       Serial.println("Sensor 1 red detected");
       stepperRight();
-      // servoShoot();
-      // stepperR2C();
+      servoShoot();
+      stepperR2C();
+      break;
+
+        case 3:
+      Serial.println("Both sensors red detected. No shooting.");
+      break;
+
+    case 4:
+      Serial.println("No red detected on both sensors");
+      stepperLeft();
+      servoShoot();
+      stepperL2C();
+      stepperRight();
+      servoShoot();
+      stepperR2C();
       break;
 
     default:
@@ -703,7 +789,7 @@ void encoderTicckcount(int targetStrips) {
   unsigned long lastStripTime = 0;
 
   while (true) {
-    bool stripDetected = (digitalRead(leftCounter) == HIGH &&
+    bool stripDetected = (digitalRead(leftCounter) == HIGH ||
                           digitalRead(rightCounter) == HIGH);
 
     if (stripDetected && !prevStripDetected &&
@@ -780,27 +866,107 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(LEFT_ENCODER), leftEncoderISR, RISING);
   attachInterrupt(digitalPinToInterrupt(RIGHT_ENCODER), rightEncoderISR, RISING);
 
-  // servo1.attach(SERVO_PIN1);
-  // servo2.attach(SERVO_PIN2);
+  servo1.attach(SERVO_PIN1);
+  servo2.attach(SERVO_PIN2);
 
-  // // FORCE START POSITION
-  // servo1.write(0);
-  // servo2.write(0);
-  // delay(1000);   
+  // FORCE START POSITION
+  servo1.write(0);
+  servo2.write(0);
+  delay(1000);   
 
   stopMotors();
 
   Serial.println("Robot Ready");
 
-//    lineFollowUntil(3);
+
+  //blue arena
+//    lineFollowUntil(4);
 //  delay(1000);
+//   encoderRight(200);
+//  delay(600);
+// lineFollowUntil(4);
+// delay(500);
+//   encoderRight(200);
+//  delay(600);
+//  lineFollowUntil(2);
+// delay(500);
+// encoderForward(25);
+//  delay(1000);
+//  ReadDown();
+// delay(500);
+// ReadUp();
+// delay(500);
+// encoderBackward(20);
+// delay(500);
+// encoderLeft(200);
+// delay(800);
+//  lineFollowUntil(2);
+//  delay(1000);
+//  encoderRight(200);
+//  delay(800);
+//   lineFollowUntil(4);
+//  delay(1000);
+//  encoderLeft(200);
+// delay(800);
+//  lineFollowUntil(4);
+//  delay(1000);
+//  B_lineFollowUntil(2);
+//  delay(800);
+//  encoderLeft(200);
+//  delay(800);
+// encoderForward(800);
+// delay(1000);
+
+
+
+
+//red arena
+//   lineFollowUntil(4);
+//  delay(300);
+//  encoderLeft(185);
+//  delay(400);
+//    lineFollowUntil(4);
+//  delay(300);
+//  encoderLeft(185);
+//  delay(300);
+//   lineFollowUntil(2);
+//  delay(300);
+//  encoderForward(40);
+//  delay(1000);
+//   ReadDown();
+// delay(800);
+// ReadUp();
+// delay(500);
+// encoderBackward(20);
+// delay(1000);
+// encoderRight(185);
+// delay(300);
+//  lineFollowUntil(2);
+//  delay(300);
+//  encoderLeft(185);
+//  delay(300);
+//    lineFollowUntil(4);
+//  delay(300);
+//  encoderRight(185);
+//  delay(200);
+//   lineFollowUntil(2);
+//  delay(300);
+//   encoderTicckcount(5);
+
+
+      stepperLeft();
+      servoShoot();
+      stepperL2C();
+      stepperRight();
+      servoShoot();
+      stepperR2C();
+
 // stepperL2C();
 // stepperR2C();
 // stepperRight();
 // stepperL2C();
 // delay(1000);
 // stepperLeft();
-// checkColorSensor1Red();
 
 
 
@@ -875,18 +1041,29 @@ void setup() {
 //  delay(1000);
 //  encoderLeft(200);
 
-  lineFollowUntil(1);
- delay(1000);
- checkColorSensor1Red();
-delay(1000);
+//   lineFollowUntil(1);
+//  delay(1000);
+// ReadDown();
+// delay(500);
+// ReadUp();
+// delay(1000);
+
+// stepperUp();
+
 //  encoderForward(50);
 //  delay(1000);
 // encoderRight(200);
 //  delay(1000);
-//    lineFollowUntil(4);
+//    lineFollowUntil(1);
 //  delay(1000);
-//  encoderRight(200);
+//  encoderRight(180);
 //  delay(1000);
+//  encoderTicckcount(5);
+//     lineFollowUntil(2);
+//  delay(1000);
+//  encoderLeft(196);
+//  delay(1000);
+// forward();
 //    lineFollowUntil(2);
 //  delay(1000);
 //   lineFollowUntil(1);
@@ -912,7 +1089,10 @@ delay(1000);
 // LOOP TEST
 // =====================================
 void loop() {
-
+// encoderLeft(200);
+// delay(1000);
+// encoderRight(200);
+// delay(1000);
 // senseColor();
 // checkColorSensor1Red();
   // servoShoot();
